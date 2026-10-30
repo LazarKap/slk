@@ -84,6 +84,25 @@ func TestNavigationUpDown(t *testing.T) {
 	}
 }
 
+func TestNavigateCtrlNP(t *testing.T) {
+	m := New()
+	m.Open("C123", "1234.5678", nil)
+	for _, k := range "heart" {
+		m.HandleKey(string(k))
+	}
+	if len(m.filtered) < 2 {
+		t.Skip("not enough filtered results for navigation test")
+	}
+	m.HandleKey("ctrl+n")
+	if m.selected != 1 {
+		t.Errorf("expected selected 1 after ctrl+n, got %d", m.selected)
+	}
+	m.HandleKey("ctrl+p")
+	if m.selected != 0 {
+		t.Errorf("expected selected 0 after ctrl+p, got %d", m.selected)
+	}
+}
+
 func TestSelectEmoji(t *testing.T) {
 	m := New()
 	m.Open("C123", "1234.5678", nil)
