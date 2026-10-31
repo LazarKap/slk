@@ -148,7 +148,7 @@ func TestDownloadKey_FromThreadPanel(t *testing.T) {
 }
 
 // Images are excluded: they already have the preview flow (O/v).
-func TestDownloadKey_SkipsImageAttachments(t *testing.T) {
+func TestDownloadKey_DownloadsImageAttachments(t *testing.T) {
 	app := NewApp()
 	app.focusedPanel = PanelMessages
 	app.messagepane.SetMessages([]messages.MessageItem{
@@ -160,7 +160,8 @@ func TestDownloadKey_SkipsImageAttachments(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("expected cmd")
 	}
-	if _, ok := cmd().(ToastMsg); !ok {
-		t.Errorf("expected ToastMsg for image-only message, got %#v", cmd())
+	m, ok := cmd().(DownloadFileMsg)
+	if !ok || m.Attachment.Name != "p.png" {
+		t.Errorf("expected DownloadFileMsg for p.png, got %#v", cmd())
 	}
 }
