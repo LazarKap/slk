@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"mime"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -67,7 +68,7 @@ func (d *Downloader) Download(ctx context.Context, rawURL, name string) (string,
 			lastErr = fmt.Errorf("HTTP 200 with text/html (auth failure)")
 			continue
 		}
-		path, err := d.writeUnique(name, body)
+		path, err := d.writeUnique(withExt(name, contentType), body)
 		if err != nil {
 			return "", err
 		}
@@ -105,6 +106,33 @@ func (d *Downloader) get(ctx context.Context, rawURL string, auth slackhttp.Team
 	}
 	body, err := io.ReadAll(resp.Body)
 	return body, contentType, resp.StatusCode, err
+}
+
+// withExt appends an extension derived from the Content-Type when name
+// has none. Slack file titles (IMG_9108) often lack the extension of
+// the underlying file (IMG_9108.png); without one macOS and most
+// desktops treat the download as plain text.
+func withExt(name, contentType string) string {
+	if filepath.Ext(name) != "" {
+		return name
+	}
+	mt, _, err := mime.ParseMediaType(contentType)
+	if err != nil {
+		return name
+	}
+	exts, _ := mime.ExtensionsByType(mt)
+	if len(exts) == 0 {
+		return name
+	}
+	// ponytail: ExtensionsByType order is platform-dependent; prefer the short common ones
+	for _, want := range []string{".png", ".jpg", ".gif", ".pdf", ".webp", ".mp4", ".txt"} {
+		for _, e := range exts {
+			if e == want {
+				return name + e
+			}
+		}
+	}
+	return name + exts[0]
 }
 
 // writeUnique writes body to dir/name, suffixing "-2", "-3", ...
