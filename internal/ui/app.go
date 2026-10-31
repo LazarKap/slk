@@ -1570,11 +1570,10 @@ func (a *App) openLinksOfSelected() tea.Cmd {
 }
 
 // downloadFilesOfSelected implements the `d` keybinding: collect the
-// downloadable (non-image) file attachments of the selected message
+// downloadable attachments (files and images) of the selected message
 // (messages pane or thread panel). 0 files -> toast; 1 file ->
 // dispatch DownloadFileMsg directly; 2+ -> open the picker modal in
-// "files" mode. Mirrors openLinksOfSelected. Images are excluded: they
-// already have the preview flow (O/v).
+// "files" mode. Mirrors openLinksOfSelected.
 func (a *App) downloadFilesOfSelected() tea.Cmd {
 	p, _, ok := a.focusedContentPane()
 	if !ok {
@@ -1587,7 +1586,7 @@ func (a *App) downloadFilesOfSelected() tea.Cmd {
 	atts := msg.Attachments
 	files := make([]messages.Attachment, 0, len(atts))
 	for _, att := range atts {
-		if att.Kind == "file" && att.DownloadURL != "" {
+		if att.DownloadURL != "" {
 			files = append(files, att)
 		}
 	}
