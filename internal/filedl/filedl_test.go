@@ -124,3 +124,19 @@ func TestSanitizeName(t *testing.T) {
 		}
 	}
 }
+
+func TestDownloadAddsExtensionFromContentType(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "image/png")
+		w.Write([]byte("\x89PNG"))
+	}))
+	defer srv.Close()
+	d := New(slackhttp.NewAuthResolver(nil), t.TempDir())
+	path, err := d.Download(context.Background(), srv.URL+"/x", "IMG_9108")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if filepath.Base(path) != "IMG_9108.png" {
+		t.Errorf("path = %q, want IMG_9108.png", path)
+	}
+}
