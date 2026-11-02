@@ -9,6 +9,25 @@
 
 `slk` is a daily-driver replacement for the official Slack desktop client, built in Go with [bubbletea](https://github.com/charmbracelet/bubbletea) and [lipgloss](https://github.com/charmbracelet/lipgloss).
 
+## Quick setup (this fork)
+
+```bash
+git clone git@github.com:LazarKap/slk.git && cd slk
+go build -ldflags="-s -w" -trimpath -o ~/go/bin/slk ./cmd/slk
+slk --add-workspace   # reads the session from the signed-in Slack desktop app
+slk
+```
+
+Things that bit me on macOS + Ghostty + tmux:
+
+- **Ctrl+E (edit draft in editor)** needs `export EDITOR=nvim` in your shell rc.
+- **Images look pixelated** inside tmux until `set -g allow-passthrough on` is in `tmux.conf`.
+- **Notifications** are flaky via AppleScript; `brew install terminal-notifier` and allow it in System Settings → Notifications.
+- **Ctrl+S is eaten by tmux** if it is bound there; this fork adds **Ctrl+G** for the presence menu.
+- Upstream sync: `git fetch upstream && git rebase upstream/main`, then rebuild.
+
+Changes in this fork on top of upstream: Ctrl+N/Ctrl+P in the reaction picker, `d` downloads images too, downloaded files get an extension from Content-Type, Ctrl+G presence menu.
+
 ## Why slk?
 
 - **Fast.** Cold start in milliseconds. Render-cached messages. SQLite-backed scrollback. Real-time over WebSocket.
