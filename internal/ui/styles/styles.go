@@ -110,7 +110,7 @@ var (
 
 	SectionHeader = lipgloss.NewStyle().
 			Background(Background).
-			Foreground(TextMuted).
+			Foreground(Primary).
 			Bold(true).
 			Padding(0, 1)
 
@@ -467,7 +467,7 @@ func buildStyles() {
 	UnreadBadge = lipgloss.NewStyle().
 		Background(Error).Foreground(lipgloss.Color("#FFFFFF")).Padding(0, 1)
 	SectionHeader = lipgloss.NewStyle().
-		Background(SidebarBackground).Foreground(SidebarTextMuted).Bold(true).Padding(0, 1)
+		Background(SidebarBackground).Foreground(Primary).Bold(true).Padding(0, 1)
 	Timestamp = lipgloss.NewStyle().
 		Background(Background).Foreground(TextMuted).Italic(true)
 	MessageText = lipgloss.NewStyle().

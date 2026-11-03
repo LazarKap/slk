@@ -33,6 +33,8 @@ func (a *App) newWindowModel(chName string) *messages.Model {
 	}
 	m.SetImageContext(a.imageCtx)
 	m.SetSpinnerFrame(a.spinnerFrame)
+	m.SetColoredUsernames(a.coloredUsernames)
+	m.SetGroupMessages(a.groupMessages)
 	return m
 }
 
