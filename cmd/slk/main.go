@@ -943,6 +943,17 @@ func run() error {
 				}
 				return ui.ChannelJoinedMsg{ID: chIDStr, Name: channelName}
 			},
+			Leave: func(channelID ids.ChannelID, channelName string) core.Msg {
+				chIDStr := string(channelID)
+				wctx := router.Active()
+				if wctx == nil {
+					return nil
+				}
+				if err := wctx.Client.LeaveChannel(context.Background(), chIDStr); err != nil {
+					return ui.ChannelLeaveFailedMsg{ID: chIDStr, Name: channelName, Err: err}
+				}
+				return ui.ChannelLeftMsg{ID: chIDStr, Name: channelName}
+			},
 		}))
 
 		app.SetSearchService(core.NewSearchService(core.SearchServiceFuncs{

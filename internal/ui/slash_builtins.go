@@ -13,6 +13,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/gammons/slk/internal/core"
+	"github.com/gammons/slk/internal/ids"
 	"github.com/gammons/slk/internal/slackfmt"
 	"github.com/gammons/slk/internal/text"
 	"github.com/gammons/slk/internal/ui/channelfinder"
@@ -138,6 +139,25 @@ func matchChannelByName(items []core.ChannelFinderItem, name string) (core.Chann
 // channelResultOf is the finder result openChannel takes for a row.
 func channelResultOf(it core.ChannelFinderItem) channelfinder.ChannelResult {
 	return channelfinder.ChannelResult{ID: it.ID, Name: it.Name, Type: it.Type, Joined: it.Joined}
+}
+
+// slashLeave leaves the channel the command was typed in, like the web
+// client's /leave. DMs cannot be left; use the sidebar to close them.
+func slashLeave(a *App, args commandArgs) tea.Cmd {
+	chID := args.Origin.channelID
+	if chID == "" {
+		return a.refuseCommand(args.Origin, "No channel to leave")
+	}
+	name, chType, found := a.channels.Lookup(ids.ChannelID(chID))
+	if !found {
+		name = chID
+	}
+	if chType == "dm" || chType == "group_dm" {
+		return a.refuseCommand(args.Origin, "You can't leave a DM")
+	}
+	channels := a.channels
+	id := ids.ChannelID(chID)
+	return func() tea.Msg { return channels.Leave(id, name) }
 }
 
 // slashMsg opens the DM with one user. The web client's /msg resolved

@@ -264,6 +264,10 @@ type ChannelService interface {
 	// or ChannelJoinFailedMsg).
 	Join(channelID ids.ChannelID, channelName string) Msg
 
+	// Leave sends conversations.leave for channelID. Returns a Msg
+	// (typically ChannelLeftMsg or ChannelLeaveFailedMsg).
+	Leave(channelID ids.ChannelID, channelName string) Msg
+
 	// RecordVisit persists a visit to channelID (SQLite write +
 	// WorkspaceContext last-visited map update). Fired once per
 	// ChannelSelectedMsg regardless of FromHistory.

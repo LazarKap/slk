@@ -160,6 +160,19 @@ func (m *Model) Upsert(item core.ChannelFinderItem) {
 // MarkJoined flips the Joined bit on a channel that the user just joined,
 // so it stops rendering as dimmed and the next Enter on it skips the join
 // step.
+// MarkLeft flips the Joined bit off after the user left the channel, so
+// it keeps showing in the finder as a channel they could rejoin.
+func (m *Model) MarkLeft(channelID string) {
+	for i := range m.items {
+		if m.items[i].ID == channelID {
+			m.items[i].Joined = false
+		}
+	}
+	if m.visible {
+		m.filter()
+	}
+}
+
 func (m *Model) MarkJoined(channelID string) {
 	for i := range m.items {
 		if m.items[i].ID == channelID {

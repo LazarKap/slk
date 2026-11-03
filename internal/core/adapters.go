@@ -318,6 +318,7 @@ type ChannelServiceFuncs struct {
 	MarkRead            func(channelID ids.ChannelID, ts ids.MessageTS) Msg
 	Lookup              ChannelLookupFunc
 	Join                JoinChannelFunc
+	Leave               JoinChannelFunc
 	RecordVisit         ChannelVisitRecorder
 	MembershipFetch     func(channelID ids.ChannelID)
 	OpenConversation    func(userIDs []string, requestID uint64) Cmd
@@ -389,6 +390,13 @@ func (c channelAdapter) Join(channelID ids.ChannelID, channelName string) Msg {
 		return nil
 	}
 	return c.fns.Join(channelID, channelName)
+}
+
+func (c channelAdapter) Leave(channelID ids.ChannelID, channelName string) Msg {
+	if c.fns.Leave == nil {
+		return nil
+	}
+	return c.fns.Leave(channelID, channelName)
 }
 
 func (c channelAdapter) RecordVisit(channelID ids.ChannelID) {

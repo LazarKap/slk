@@ -769,6 +769,21 @@ type ChannelJoinedMsg struct {
 	Name string
 }
 
+// ChannelLeftMsg is sent after /leave succeeded: the App drops the
+// channel from the sidebar, marks it unjoined in the finder and moves
+// to the next channel if it was the one on screen.
+type ChannelLeftMsg struct {
+	ID   string
+	Name string
+}
+
+// ChannelLeaveFailedMsg is sent when conversations.leave fails.
+type ChannelLeaveFailedMsg struct {
+	ID   string
+	Name string
+	Err  error
+}
+
 // ChannelJoinFailedMsg is sent when the join API call fails.
 type ChannelJoinFailedMsg struct {
 	ID   string

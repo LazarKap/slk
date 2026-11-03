@@ -276,6 +276,34 @@ var reduceChannels reducerFunc = func(a *App, msg tea.Msg) (tea.Cmd, bool) {
 			return ChannelSelectedMsg{ID: id, Name: name, Type: "channel"}
 		}, true
 
+	case ChannelLeftMsg:
+		items := a.sidebar.Items()
+		kept := make([]sidebar.ChannelItem, 0, len(items))
+		var next *sidebar.ChannelItem
+		for i := range items {
+			if items[i].ID == m.ID {
+				continue
+			}
+			kept = append(kept, items[i])
+			if next == nil && items[i].Type != "dm" && items[i].Type != "group_dm" {
+				next = &kept[len(kept)-1]
+			}
+		}
+		a.SetChannels(kept)
+		a.channelFinder.MarkLeft(m.ID)
+		toast := toastWithClear(a, "Left #"+m.Name, 2*time.Second)
+		if m.ID != a.activeChannelID || next == nil {
+			return toast, true
+		}
+		a.sidebar.SelectByID(next.ID)
+		id, name, typ := next.ID, next.Name, next.Type
+		return tea.Batch(toast, func() tea.Msg {
+			return ChannelSelectedMsg{ID: id, Name: name, Type: typ}
+		}), true
+
+	case ChannelLeaveFailedMsg:
+		return toastWithClear(a, "Couldn't leave #"+m.Name+": "+m.Err.Error(), 3*time.Second), true
+
 	case ChannelJoinFailedMsg:
 		// Nothing fancy yet -- could surface a status-bar toast
 		// in future.

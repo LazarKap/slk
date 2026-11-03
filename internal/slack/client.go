@@ -49,6 +49,7 @@ type SlackAPI interface {
 	GetPermalinkContext(ctx context.Context, params *slack.PermalinkParameters) (string, error)
 	AuthTest() (*slack.AuthTestResponse, error)
 	JoinConversation(channelID string) (*slack.Channel, string, []string, error)
+	LeaveConversationContext(ctx context.Context, channelID string) (bool, error)
 	SetUserPresenceContext(ctx context.Context, presence string) error
 	GetUserPresenceContext(ctx context.Context, user string) (*slack.UserPresence, error)
 	SetUserCustomStatusContext(ctx context.Context, statusText, statusEmoji string, statusExpiration int64) error
@@ -683,6 +684,14 @@ func (c *Client) JoinChannel(ctx context.Context, channelID string) error {
 	_, _, _, err := c.api.JoinConversation(channelID)
 	if err != nil {
 		return fmt.Errorf("joining channel %s: %w", channelID, err)
+	}
+	return nil
+}
+
+// LeaveChannel leaves a channel or private group via conversations.leave.
+func (c *Client) LeaveChannel(ctx context.Context, channelID string) error {
+	if _, err := c.api.LeaveConversationContext(ctx, channelID); err != nil {
+		return fmt.Errorf("leaving channel %s: %w", channelID, err)
 	}
 	return nil
 }

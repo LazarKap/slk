@@ -237,6 +237,10 @@ func (m *mockSlackAPI) JoinConversation(channelID string) (*slack.Channel, strin
 	return &slack.Channel{GroupConversation: slack.GroupConversation{Conversation: slack.Conversation{ID: channelID}}}, "", nil, nil
 }
 
+func (m *mockSlackAPI) LeaveConversationContext(ctx context.Context, channelID string) (bool, error) {
+	return false, nil
+}
+
 func (m *mockSlackAPI) GetPermalinkContext(ctx context.Context, params *slack.PermalinkParameters) (string, error) {
 	if m.getPermalinkContextFn != nil {
 		return m.getPermalinkContextFn(ctx, params)

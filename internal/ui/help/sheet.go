@@ -31,7 +31,7 @@ func Sheet() []Entry {
 		[2]string{"] / [", "widen / narrow the sidebar"},
 		[2]string{"ctrl+b", "hide / show the sidebar"},
 		[2]string{"U", "mark channel unread from the selected message"},
-		[2]string{"/leave", "not supported in slk yet; use Slack"},
+		[2]string{"/leave", "leave the current channel"},
 	)
 	section("People and DMs",
 		[2]string{"/msg @name text", "DM anyone; @ opens the people picker (/dm alias)"},

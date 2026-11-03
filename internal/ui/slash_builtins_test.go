@@ -13,6 +13,7 @@ import (
 	"github.com/gammons/slk/internal/text"
 	"github.com/gammons/slk/internal/ui/mentionpicker"
 	"github.com/gammons/slk/internal/ui/messages"
+	"github.com/gammons/slk/internal/ui/sidebar"
 )
 
 // presenceSlashApp is slashApp with the status setter recorded and the
@@ -439,7 +440,7 @@ func TestSlashRefusalsGiveTheTextBack(t *testing.T) {
 	}{
 		{"/msg hello there", "Usage: /msg @someone [message]", false},
 		{"/msg @nobody hi", "No one called @nobody", false},
-		{"/leave", "/leave isn't supported in slk yet", false},
+		{"/close", "/close isn't supported in slk yet", false},
 		{"/status :palm_tree: on holiday", "/status isn't supported in slk yet", false},
 		{"/open", "Usage: /open #channel", false},
 		{"/open #nope", "No channel named #nope", true},
@@ -528,21 +529,94 @@ func TestSlashBuiltin_RefusalFromTheThreadComposerGivesTheTextBackThere(t *testi
 	a, _, _, _ := openSlashApp(t)
 	showThread(t, a)
 	a.threadCompose.SetDraftContext("T1", "C1", "10.0")
-	a.threadCompose.SetValue("/leave")
+	a.threadCompose.SetValue("/close")
 	_ = pressEnter(a)
-	if got := a.threadCompose.Value(); got != "/leave" {
+	if got := a.threadCompose.Value(); got != "/close" {
 		t.Errorf("thread compose = %q, want the typed text back", got)
 	}
 	if got := a.compose.Value(); got != "" {
 		t.Errorf("channel compose = %q, want untouched", got)
 	}
-	if !strings.Contains(statusbarText(a), "/leave isn't supported in slk yet") {
+	if !strings.Contains(statusbarText(a), "/close isn't supported in slk yet") {
 		t.Errorf("status bar = %q, want the toast", statusbarText(a))
 	}
 }
 
+// leaveSlashApp is slashApp on general (C1) with random (C2) beside it
+// in the sidebar, a channel service whose Leave records the id and
+// answers ChannelLeftMsg, and a DM (D1) to refuse.
+func leaveSlashApp(t *testing.T) (*App, *[]string) {
+	t.Helper()
+	a, _ := slashApp(t, nil)
+	a.SetChannels([]sidebar.ChannelItem{
+		{ID: "D1", Name: "bob", Type: "dm"},
+		{ID: "C1", Name: "general", Type: "channel"},
+		{ID: "C2", Name: "random", Type: "channel"},
+	})
+	a.channelFinder.SetItems([]core.ChannelFinderItem{
+		{ID: "C1", Name: "general", Type: "channel", Joined: true},
+		{ID: "C2", Name: "random", Type: "channel", Joined: true},
+	})
+	a.activeChannelID = "C1"
+	leaves := &[]string{}
+	a.SetChannelService(core.NewChannelService(core.ChannelServiceFuncs{
+		Lookup: func(id ids.ChannelID) (string, string, bool) {
+			switch id {
+			case "C1":
+				return "general", "channel", true
+			case "D1":
+				return "bob", "dm", true
+			}
+			return "", "", false
+		},
+		Leave: func(id ids.ChannelID, name string) core.Msg {
+			*leaves = append(*leaves, string(id))
+			return ChannelLeftMsg{ID: string(id), Name: name}
+		},
+	}))
+	return a, leaves
+}
+
+func TestSlashLeave_LeavesCurrentChannelAndMovesOn(t *testing.T) {
+	a, leaves := leaveSlashApp(t)
+	a.compose.SetValue("/leave")
+	left := deliveredMsgs[ChannelLeftMsg](t, pressEnter(a))
+	if len(*leaves) != 1 || (*leaves)[0] != "C1" || len(left) != 1 {
+		t.Fatalf("Leave calls = %v, ChannelLeftMsg = %+v; want one leave of C1", *leaves, left)
+	}
+	_, cmd := a.Update(left[0])
+	sel := deliveredMsgs[ChannelSelectedMsg](t, cmd)
+	if len(sel) != 1 || sel[0].ID != "C2" {
+		t.Fatalf("after leaving the active channel, ChannelSelectedMsg = %+v, want C2 (first non-DM left)", sel)
+	}
+	for _, it := range a.sidebar.Items() {
+		if it.ID == "C1" {
+			t.Fatal("C1 still in the sidebar after leaving")
+		}
+	}
+	for _, it := range a.channelFinder.Items() {
+		if it.ID == "C1" && it.Joined {
+			t.Fatal("C1 still marked joined in the finder")
+		}
+	}
+}
+
+func TestSlashLeave_RefusesDM(t *testing.T) {
+	a, leaves := leaveSlashApp(t)
+	a.activeChannelID = "D1"
+	a.compose.SetDraftContext("T1", "D1", "")
+	a.compose.SetValue("/leave")
+	_ = pressEnter(a)
+	if len(*leaves) != 0 {
+		t.Fatalf("Leave called for a DM: %v", *leaves)
+	}
+	if !strings.Contains(statusbarText(a), "can't leave a DM") {
+		t.Errorf("status bar = %q, want the DM refusal", statusbarText(a))
+	}
+}
+
 func TestSlashUnsupportedBuiltins(t *testing.T) {
-	for _, name := range []string{"/leave", "/close", "/part"} {
+	for _, name := range []string{"/close", "/part"} {
 		t.Run(name, func(t *testing.T) {
 			a, _ := slashApp(t, nil)
 			a.compose.SetValue(name)
