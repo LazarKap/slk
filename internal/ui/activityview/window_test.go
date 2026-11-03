@@ -21,12 +21,13 @@ func referenceView(m *Model, height, width int) string {
 		// Not under test here: the empty state doesn't depend on windowing.
 		panic("referenceView: only covers the non-empty body")
 	}
-	separator := blankLine(width)
+	header := m.renderHeader(width)
+	if height <= headerRows {
+		return header
+	}
+	height -= headerRows
 	var lines []string
-	for i, it := range m.items {
-		if i > 0 {
-			lines = append(lines, separator)
-		}
+	for i, it := range m.visible {
 		l1, l2 := m.renderCard(it, width, i == m.selected)
 		lines = append(lines, l1, l2)
 	}
@@ -53,7 +54,7 @@ func referenceView(m *Model, height, width int) string {
 	for len(visible) < height {
 		visible = append(visible, blankLine(width))
 	}
-	return strings.Join(visible, "\n")
+	return header + "\n" + strings.Join(visible, "\n")
 }
 
 // TestView_MatchesUnwindowedReference drives two identical models through

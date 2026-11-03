@@ -30,6 +30,8 @@
 package ui
 
 import (
+	"strconv"
+	"strings"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
@@ -90,6 +92,15 @@ func (a *App) setActivityItemRead(it core.ActivityItem, read bool) tea.Cmd {
 		return nil
 	}
 	a.activityView.SetItemRead(it.Key, read)
+	// Local items exist only in slk: nothing to tell Slack, no badge share.
+	if strings.HasPrefix(it.Key, "local:") {
+		for i := range a.activityLocal[a.activeTeamID] {
+			if a.activityLocal[a.activeTeamID][i].Key == it.Key {
+				a.activityLocal[a.activeTeamID][i].IsUnread = !read
+			}
+		}
+		return nil
+	}
 	a.adjustActivityBadge(a.activeTeamID, read)
 
 	k := activityReadKey(a.activeTeamID, it.Key)
@@ -154,8 +165,60 @@ func (a *App) activateUnopenableActivity(it core.ActivityItem) tea.Cmd {
 	return tea.Batch(a.setActivityItemRead(it, true), toast)
 }
 
+// markAllActivityRead flips every unread item read, locally at once and
+// on Slack one request per item (the per-item in-flight guard applies).
+func (a *App) markAllActivityRead() tea.Cmd {
+	unread := a.activityView.UnreadItems()
+	if len(unread) == 0 {
+		return toastWithClear(a, "No unread activity", 2*time.Second)
+	}
+	cmds := make([]tea.Cmd, 0, len(unread)+1)
+	for _, it := range unread {
+		if c := a.setActivityItemRead(it, true); c != nil {
+			cmds = append(cmds, c)
+		}
+	}
+	cmds = append(cmds, toastWithClear(a, "Marked "+strconv.Itoa(len(unread))+" activity items read", 2*time.Second))
+	return tea.Batch(cmds...)
+}
+
+// mergeLocalActivity puts the workspace's slk-made items in front of a
+// loaded feed page, skipping any the feed now carries under its own key.
+func (a *App) mergeLocalActivity(teamID string, items []core.ActivityItem) []core.ActivityItem {
+	local := a.activityLocal[teamID]
+	if len(local) == 0 {
+		return items
+	}
+	seen := make(map[string]bool, len(items))
+	for _, it := range items {
+		seen[core.ActivityMsgKey(it.ChannelID, it.TS)] = true
+	}
+	out := make([]core.ActivityItem, 0, len(local)+len(items))
+	for _, it := range local {
+		if !seen[core.ActivityMsgKey(it.ChannelID, it.TS)] {
+			out = append(out, it)
+		}
+	}
+	return append(out, items...)
+}
+
 var reduceActivity reducerFunc = func(a *App, msg tea.Msg) (tea.Cmd, bool) {
 	switch m := msg.(type) {
+	case ActivityLocalItemMsg:
+		if a.activityLocal == nil {
+			a.activityLocal = map[string][]core.ActivityItem{}
+		}
+		for _, it := range a.activityLocal[m.TeamID] {
+			if it.Key == m.Item.Key {
+				return nil, true
+			}
+		}
+		a.activityLocal[m.TeamID] = append([]core.ActivityItem{m.Item}, a.activityLocal[m.TeamID]...)
+		if m.TeamID == a.activeTeamID {
+			a.activityView.AddLocalItem(m.Item, m.Body)
+		}
+		return nil, true
+
 	case ActivityViewActivatedMsg:
 		_ = m
 		a.view = ViewActivity
@@ -193,7 +256,7 @@ var reduceActivity reducerFunc = func(a *App, msg tea.Msg) (tea.Cmd, bool) {
 		if m.TeamID != a.activeTeamID {
 			return nil, true
 		}
-		a.activityView.SetItems(m.Items)
+		a.activityView.SetItems(a.mergeLocalActivity(m.TeamID, m.Items))
 		// No badge write here: the badge is the workspace's total
 		// unread activity (ActivityBadgeUpdatedMsg), not the loaded
 		// page's unread count - the page holds only the newest items,
@@ -214,9 +277,20 @@ var reduceActivity reducerFunc = func(a *App, msg tea.Msg) (tea.Cmd, bool) {
 		if a.activityBadgeTotals == nil {
 			a.activityBadgeTotals = make(map[string]int)
 		}
+		prev, had := a.activityBadgeTotals[m.TeamID]
 		a.activityBadgeTotals[m.TeamID] = m.Total
 		if m.TeamID == a.activeTeamID {
 			a.sidebar.SetActivityUnreadCount(m.Total)
+			// Live refresh: something new landed while the view is open.
+			// SetItems keeps the cursor on the same item by key.
+			if a.view == ViewActivity && had && m.Total > prev {
+				activity := a.activity
+				team := ids.TeamID(m.TeamID)
+				unreadOnly := a.activityView.UnreadOnly()
+				return func() tea.Msg {
+					return activity.Fetch(team, activityFeedPageLimit, unreadOnly)
+				}, true
+			}
 		}
 		return nil, true
 

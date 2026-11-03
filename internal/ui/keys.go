@@ -54,6 +54,9 @@ type KeyMap struct {
 	PrevUnread          key.Binding
 	ActivityView        key.Binding
 	ActivityUnread      key.Binding
+	ActivityFilter      key.Binding
+	ActivityPriority    key.Binding
+	ActivityReadAll     key.Binding
 	WorkspaceFinder     key.Binding
 	NewMessage          key.Binding
 	ThemeSwitcher       key.Binding
@@ -133,13 +136,16 @@ func DefaultKeyMap() KeyMap {
 		// inside the ' chord, and the two commands are dispatched from
 		// the command registry, so none of them is a KeyMap binding —
 		// but all three need to appear in the help overlay.
-		MarkBackJump:   key.NewBinding(key.WithHelp("''", "back-jump to where you jumped from")),
-		MarksList:      key.NewBinding(key.WithHelp(":marks", "list marks")),
-		MarksDelete:    key.NewBinding(key.WithHelp(":delmarks", "delete marks by letter")),
-		NextUnread:     key.NewBinding(key.WithKeys("a"), key.WithHelp("a", "next unread channel")),
-		PrevUnread:     key.NewBinding(key.WithKeys("A"), key.WithHelp("A", "prev unread channel")),
-		ActivityView:   key.NewBinding(key.WithKeys("ctrl+a"), key.WithHelp("ctrl+a / :activity", "open activity")),
-		ActivityUnread: key.NewBinding(key.WithKeys("u"), key.WithHelp("u", "Activity: toggle unread-only")),
+		MarkBackJump:     key.NewBinding(key.WithHelp("''", "back-jump to where you jumped from")),
+		MarksList:        key.NewBinding(key.WithHelp(":marks", "list marks")),
+		MarksDelete:      key.NewBinding(key.WithHelp(":delmarks", "delete marks by letter")),
+		NextUnread:       key.NewBinding(key.WithKeys("a"), key.WithHelp("a", "next unread channel")),
+		PrevUnread:       key.NewBinding(key.WithKeys("A"), key.WithHelp("A", "prev unread channel")),
+		ActivityView:     key.NewBinding(key.WithKeys("ctrl+a"), key.WithHelp("ctrl+a / :activity", "open activity")),
+		ActivityUnread:   key.NewBinding(key.WithKeys("u"), key.WithHelp("u", "Activity: toggle unread-only")),
+		ActivityFilter:   key.NewBinding(key.WithKeys("f"), key.WithHelp("f", "Activity: cycle kind filter")),
+		ActivityPriority: key.NewBinding(key.WithKeys("p"), key.WithHelp("p", "Activity: toggle priority sort")),
+		ActivityReadAll:  key.NewBinding(key.WithKeys("R"), key.WithHelp("R", "Activity: mark all read")),
 		// Keyless: ctrl+w is reserved as the window-command prefix
 		// (window-management design §4). The keyless binding never
 		// matches but keeps the help-overlay entry pointing at :ws

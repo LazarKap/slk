@@ -426,10 +426,13 @@ type App struct {
 	imageCtx         imgrender.ImageContext
 	coloredUsernames bool
 	groupMessages    bool
-	emojiCtx         messages.EmojiContext
-	emojiCustoms     map[string]string
-	channelNames     map[string]string
-	userGroups       map[string]string
+	// activityLocal holds slk-made Activity items (keyword hits) per
+	// workspace, merged in front of every loaded feed page.
+	activityLocal map[string][]core.ActivityItem
+	emojiCtx      messages.EmojiContext
+	emojiCustoms  map[string]string
+	channelNames  map[string]string
+	userGroups    map[string]string
 
 	// buildInfo is the build identity :version shows: version and short
 	// commit (version.Short). Set once at startup by main.

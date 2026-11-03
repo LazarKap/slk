@@ -298,6 +298,17 @@ func handleNormalMode(a *App, msg tea.KeyMsg) tea.Cmd {
 			return a.openReactionPicker(p, channelID)
 		}
 
+	case a.view == ViewActivity && key.Matches(msg, a.keys.ActivityFilter):
+		a.activityView.CycleFilter()
+		return nil
+
+	case a.view == ViewActivity && key.Matches(msg, a.keys.ActivityPriority):
+		a.activityView.TogglePriority()
+		return nil
+
+	case a.view == ViewActivity && key.Matches(msg, a.keys.ActivityReadAll):
+		return a.markAllActivityRead()
+
 	case key.Matches(msg, a.keys.ReactionNav):
 		if p, _, ok := a.focusedContentPane(); ok {
 			p.EnterReactionNav()

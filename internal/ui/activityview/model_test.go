@@ -181,19 +181,81 @@ func TestRenderLinesSeparatesCards(t *testing.T) {
 		{Type: "dm", ChannelID: "C2", TS: "2.2", Key: "b"},
 		{Type: "thread_v2", ChannelID: "C3", TS: "3.3", Key: "c"},
 	})
-	lines := m.renderLines(0, 3*cardStride-1, 60)
-	if want := 3*2 + 2; len(lines) != want {
-		t.Fatalf("want %d lines (3 two-line cards + 2 separators), got %d", want, len(lines))
+	lines := m.renderLines(0, 3*cardStride, 60)
+	if want := 3 * 2; len(lines) != want {
+		t.Fatalf("want %d lines (3 two-line cards, no separators), got %d", want, len(lines))
 	}
 	for i, l := range lines {
 		if strings.Contains(l, "\n") {
 			t.Fatalf("line %d contains a newline: %q", i, l)
 		}
-		isSeparator := i == 2 || i == 5
-		if blank := strings.TrimSpace(ansi.Strip(l)) == ""; blank != isSeparator {
-			t.Errorf("line %d blank=%v, want %v: %q", i, blank, isSeparator, ansi.Strip(l))
+		if i%2 == 0 && strings.TrimSpace(ansi.Strip(l)) == "" {
+			t.Errorf("line %d (card header) is blank: %q", i, ansi.Strip(l))
 		}
 	}
+}
+
+func TestFilterAndPriority(t *testing.T) {
+	m := New(nil, "")
+	m.SetItems([]core.ActivityItem{
+		{Type: "message_reaction", ChannelID: "C1", TS: "4.4", Key: "r", IsUnread: true},
+		{Type: "thread_v2", ChannelID: "C1", TS: "3.3", Key: "t"},
+		{Type: "at_user", ChannelID: "C1", TS: "2.2", Key: "m", IsUnread: true},
+		{Type: "dm", ChannelID: "D1", TS: "1.1", Key: "d", IsUnread: true},
+	})
+	// priority on by default: unread mention and DM float above the
+	// unread reaction, feed order kept inside each band.
+	if got := keysOf(m.visible); got != "m,d,r,t" {
+		t.Fatalf("priority order = %s, want m,d,r,t", got)
+	}
+	m.TogglePriority()
+	if got := keysOf(m.visible); got != "r,t,m,d" {
+		t.Fatalf("feed order = %s, want r,t,m,d", got)
+	}
+	m.MoveDown()
+	m.MoveDown() // on "m"
+	if f := m.CycleFilter(); f != "mention" {
+		t.Fatalf("first filter = %q, want mention", f)
+	}
+	if got := keysOf(m.visible); got != "m" {
+		t.Fatalf("mention filter = %s, want m", got)
+	}
+	if it, _ := m.SelectedItem(); it.Key != "m" {
+		t.Fatalf("selection after filter = %q, want m", it.Key)
+	}
+	for _, want := range []string{"thread", "dm", "reaction", ""} {
+		if f := m.CycleFilter(); f != want {
+			t.Fatalf("filter cycle = %q, want %q", f, want)
+		}
+	}
+	if n := len(m.UnreadItems()); n != 3 {
+		t.Fatalf("UnreadItems = %d, want 3", n)
+	}
+}
+
+func TestAddLocalItemSurvivesAndRendersBody(t *testing.T) {
+	m := New(map[string]string{"U9": "zed"}, "")
+	m.SetItems([]core.ActivityItem{{Type: "dm", ChannelID: "D1", TS: "1.1", Key: "d"}})
+	m.AddLocalItem(
+		core.ActivityItem{Key: "local:kw:C1:5.5", Type: "keyword", IsUnread: true, ChannelID: "C1", TS: "5.5", AuthorID: "U9"},
+		core.ActivityMessage{Text: "deploy babel now", UserID: "U9"},
+	)
+	m.AddLocalItem(core.ActivityItem{Key: "local:kw:C1:5.5", Type: "keyword"}, core.ActivityMessage{})
+	if len(m.items) != 2 {
+		t.Fatalf("items = %d, want 2 (dedup by key)", len(m.items))
+	}
+	got := ansi.Strip(m.View(10, 80))
+	if !strings.Contains(got, "deploy babel now") || !strings.Contains(got, "zed") {
+		t.Fatalf("local item body/author missing:\n%s", got)
+	}
+}
+
+func keysOf(items []core.ActivityItem) string {
+	ks := make([]string, len(items))
+	for i, it := range items {
+		ks[i] = it.Key
+	}
+	return strings.Join(ks, ",")
 }
 
 var sgrFgRe = regexp.MustCompile(`\x1b\[[0-9;]*?38;2;(\d+;\d+;\d+)[0-9;]*m`)
@@ -530,19 +592,18 @@ func TestClickAtStride(t *testing.T) {
 		{Type: "dm", ChannelID: "C2", TS: "2.2", Key: "b"},
 		{Type: "thread_v2", ChannelID: "C3", TS: "3.3", Key: "c"},
 	})
-	// Card 0 occupies rows 0,1; separator 2; card 1 rows 3,4; separator
-	// 5; card 2 rows 6,7.
+	// Row 0 is the header band; card 0 occupies rows 1,2; card 1 rows
+	// 3,4; card 2 rows 5,6.
 	for _, tc := range []struct {
 		rowY    int
 		wantOK  bool
 		wantSel int
 	}{
-		{0, true, 0}, {1, true, 0},
-		{2, false, 0},
+		{0, false, 0},
+		{1, true, 0}, {2, true, 0},
 		{3, true, 1}, {4, true, 1},
-		{5, false, 0},
-		{6, true, 2}, {7, true, 2},
-		{8, false, 0}, {-1, false, 0},
+		{5, true, 2}, {6, true, 2},
+		{7, false, 0}, {-1, false, 0},
 	} {
 		ok := m.ClickAt(tc.rowY)
 		if ok != tc.wantOK {
