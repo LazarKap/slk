@@ -34,10 +34,11 @@ func Sheet() []Entry {
 		[2]string{"/leave", "leave the current channel"},
 	)
 	section("People and DMs",
-		[2]string{"/msg @name text", "DM anyone; @ opens the people picker (/dm alias)"},
-		[2]string{"ctrl+t", "jump to a DM you already have"},
+		[2]string{"ctrl+n", "search people; enter opens their DM with its history (space picks several)"},
+		[2]string{"ctrl+f from:@name", "search someone's messages across the workspace"},
+		[2]string{"ctrl+t", "jump to a DM you already have in the sidebar"},
+		[2]string{"/msg @name text", "DM with a prefilled message (/dm alias)"},
 		[2]string{"K", "show the author's profile"},
-		[2]string{"ctrl+n", "new message picker"},
 	)
 	section("Read messages",
 		[2]string{"gg / G", "oldest loaded / newest"},
