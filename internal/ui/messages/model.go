@@ -2014,8 +2014,8 @@ func (m *Model) viewInternal(height, width int, applySelection bool) string {
 		// outside the panel.
 		headerStyle := lipgloss.NewStyle().
 			Width(width).
-			Background(styles.Background).
-			Foreground(styles.TextPrimary).
+			Background(styles.Surface).
+			Foreground(styles.Primary).
 			Bold(true).
 			Padding(0, 1)
 		header := headerStyle.Render(fmt.Sprintf("%s %s", ChannelGlyph(m.channelType), m.channelName))

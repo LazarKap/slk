@@ -422,14 +422,16 @@ type App struct {
 	// values pushed through the App-level Set* forwarders, kept so
 	// newWindowModel can configure late-created window models
 	// identically to the root model. See internal/ui/winmodels.go.
-	avatarFn      messages.AvatarFunc
-	replyAvatarFn messages.AvatarFunc
-	replyAvatars  bool
-	imageCtx      imgrender.ImageContext
-	emojiCtx      messages.EmojiContext
-	emojiCustoms  map[string]string
-	channelNames  map[string]string
-	userGroups    map[string]string
+	avatarFn         messages.AvatarFunc
+	replyAvatarFn    messages.AvatarFunc
+	replyAvatars     bool
+	imageCtx         imgrender.ImageContext
+	emojiCtx         messages.EmojiContext
+	emojiCustoms     map[string]string
+	channelNames     map[string]string
+	userGroups       map[string]string
+	coloredUsernames bool
+	groupMessages    bool
 
 	// buildInfo is the build identity :version shows: version and short
 	// commit (version.Short). Set once at startup by main.
@@ -2879,6 +2881,7 @@ func (a *App) replyAvatarFunc() messages.AvatarFunc {
 // SetColoredUsernames enables or disables deterministic per-user coloring
 // of usernames across all message panes and the thread panel.
 func (a *App) SetColoredUsernames(enabled bool) {
+	a.coloredUsernames = enabled
 	for _, m := range a.allWinModels() {
 		m.SetColoredUsernames(enabled)
 	}
@@ -2894,6 +2897,7 @@ func (a *App) SetThreadAvatars(enabled bool) {
 // SetGroupMessages toggles Slack-style grouping of consecutive messages
 // from one author in the channel panes.
 func (a *App) SetGroupMessages(enabled bool) {
+	a.groupMessages = enabled
 	for _, m := range a.allWinModels() {
 		m.SetGroupMessages(enabled)
 	}

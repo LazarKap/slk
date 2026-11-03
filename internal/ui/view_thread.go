@@ -88,7 +88,7 @@ func (a *App) renderThreadRegion(frame panelLayoutFrame, themeVer int64) string 
 	bottomBorderStyle := styles.UnfocusedBorder.Width(threadWidth).
 		BorderTop(false).BorderLeft(true).BorderRight(true).BorderBottom(true)
 	if threadFocused {
-		bottomBorderStyle = styles.FocusedBorder.Width(threadWidth).
+		bottomBorderStyle = styles.FocusedBorder.BorderForeground(styles.Accent).Width(threadWidth).
 			BorderTop(false).BorderLeft(true).BorderRight(true).BorderBottom(true)
 	}
 	threadBottomInner := messages.ReapplyBgAfterResets(threadComposeView, messages.BgANSI())
@@ -136,7 +136,7 @@ func (a *App) renderThreadTop(threadWidth, threadBorder, threadTopHeight, thread
 	topBorderStyle := styles.UnfocusedBorder.Width(threadWidth).
 		BorderTop(true).BorderLeft(true).BorderRight(true).BorderBottom(false)
 	if threadFocused {
-		topBorderStyle = styles.FocusedBorder.Width(threadWidth).
+		topBorderStyle = styles.FocusedBorder.BorderForeground(styles.Accent).Width(threadWidth).
 			BorderTop(true).BorderLeft(true).BorderRight(true).BorderBottom(false)
 	}
 	threadView := a.threadPanel.View(threadContentHeight, threadWidth-2)

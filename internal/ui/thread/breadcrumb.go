@@ -72,7 +72,7 @@ func renderBreadcrumb(width int, channelName, channelType, author string, replyC
 
 	// channelCols is the channel label's width in cells, measured after all truncation - the click router turns the span [0, channelCols) on the breadcrumb row into the go-up-a-level target. 0 when the channel is omitted.
 	channelCols := emojiutil.Width(channel)
-	bg := lipgloss.NewStyle().Background(styles.Background)
+	bg := lipgloss.NewStyle().Background(styles.Surface)
 	var b strings.Builder
 	if channel != "" {
 		b.WriteString(bg.Foreground(styles.TextMuted).Render(channel + sep))
