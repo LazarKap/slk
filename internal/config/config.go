@@ -124,6 +124,12 @@ type Appearance struct {
 	// does: the repliers' avatars (kitty graphics only), then "N
 	// replies". Needs ShowAvatars. Default off.
 	ReplyAvatars bool `toml:"reply_avatars"`
+	// Scrollbar draws the track/thumb column at the right edge of the
+	// messages pane. Default on; nil means unset.
+	Scrollbar *bool `toml:"scrollbar"`
+	// GroupMessages hides avatar, name and time on consecutive messages
+	// from the same author within five minutes, like Slack. Default on.
+	GroupMessages *bool `toml:"group_messages"`
 }
 
 type Animations struct {

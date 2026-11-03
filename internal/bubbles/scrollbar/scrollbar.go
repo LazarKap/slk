@@ -31,8 +31,11 @@ import (
 // scrollbar). bg is the panel background color used to keep the gutter cell
 // flush with the surrounding theme; trackFg / thumbFg control the track and
 // thumb glyph colors.
+// Enabled turns the overlay off globally (config: appearance.scrollbar).
+var Enabled = true
+
 func Overlay(visible []string, width, total, yOffset, visibleHeight int, bg, trackFg, thumbFg color.Color) []string {
-	if visibleHeight <= 0 || width < 1 {
+	if !Enabled || visibleHeight <= 0 || width < 1 {
 		return visible
 	}
 	if total <= visibleHeight {

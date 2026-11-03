@@ -40,6 +40,7 @@ type RenderOptions struct {
 	ReplyAffordance bool   // "[N replies ->]" under a parent (channel pane)
 	EditedMark      bool   // "(edited)" after the timestamp (channel pane)
 	BroadcastLabel  bool   // "↳ replied to a thread" label (channel pane)
+	Continuation    bool   // same author as the previous message: no header row
 	ImageHits       bool   // record image and file hit rects (both panes)
 	SixelRows       bool   // record sixel rows (channel pane)
 	stats           *entryPerfStats
@@ -360,7 +361,11 @@ func RenderMessage(msg MessageItem, width int, rc *RenderContext, opt RenderOpti
 		labelRows += styles.Timestamp.Render("\u21b3 replied to a thread") + "\n"
 		preAttachmentRows++ // the broadcast label occupies its own row
 	}
-	preAttachmentRows++ // username + ts row
+	if opt.Continuation {
+		line = ""
+	} else {
+		preAttachmentRows++ // username + ts row
+	}
 	if hasBody {
 		preAttachmentRows += lipgloss.Height(text) // wrapped body text
 	}
@@ -612,6 +617,9 @@ func RenderMessage(msg MessageItem, width int, rc *RenderContext, opt RenderOpti
 		bodyRow = "\n" + text
 	}
 	msgContent := labelRows + line + editedMark + bodyRow + bkBlock + attachmentLines + threadLine + reactionLine
+	if opt.Continuation {
+		msgContent = strings.TrimPrefix(msgContent, "\n")
+	}
 
 	// Translate per-pill specs into entry-relative reaction hit rects.
 	// reactionRowBase is the row index (within linesNormal) where the
