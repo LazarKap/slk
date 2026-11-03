@@ -118,6 +118,12 @@ type Appearance struct {
 	// by hashing their user ID — mirroring how Slack clients assign stable
 	// per-user colors. Default off.
 	ColoredUsernames bool `toml:"colored_usernames"`
+	// Scrollbar draws the track/thumb column at the right edge of the
+	// messages pane. Default on; nil means unset.
+	Scrollbar *bool `toml:"scrollbar"`
+	// GroupMessages hides avatar, name and time on consecutive messages
+	// from the same author within five minutes, like Slack. Default on.
+	GroupMessages *bool `toml:"group_messages"`
 }
 
 type Animations struct {

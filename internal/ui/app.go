@@ -2857,6 +2857,14 @@ func (a *App) SetColoredUsernames(enabled bool) {
 	a.threadPanel.SetColoredUsernames(enabled)
 }
 
+// SetGroupMessages toggles Slack-style grouping of consecutive messages
+// from one author in the channel panes.
+func (a *App) SetGroupMessages(enabled bool) {
+	for _, m := range a.allWinModels() {
+		m.SetGroupMessages(enabled)
+	}
+}
+
 // SetImageContext configures the inline-image rendering pipeline on the
 // messages pane. Should be called once at startup, before the first
 // View(). Pass a zero-valued ImageContext to disable inline rendering.

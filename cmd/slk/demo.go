@@ -95,6 +95,8 @@ func newDemoApp(d *demo.Demo) *ui.App {
 		TypingIndicators: true,
 		MouseWheelLines:  3,
 		ColoredUsernames: true,
+		Scrollbar:        true,
+		GroupMessages:    true,
 	})
 	d.Install(app)
 	return app

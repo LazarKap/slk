@@ -2165,12 +2165,12 @@ func TestGolden_WindowSplitRendersTwoDistinctPanes(t *testing.T) {
 	}
 
 	band := goldenPanelText(a.View().Content, a.layout.sidebarEnd, a.layout.msgEnd)
-	// Top-left corners, which are unambiguous: "┏" only comes from
-	// lipgloss.ThickBorder and "╭" only from RoundedBorder. Sliced to
+	// Top-left corners, which are unambiguous: "┌" only comes from
+	// lipgloss.NormalBorder and "╭" only from RoundedBorder. Sliced to
 	// the messages band so the sidebar's own rounded border cannot
 	// satisfy the second one.
-	if !strings.Contains(band, "┏") {
-		t.Errorf("no thick (focused) border in the messages band; the focused pane did not "+
+	if !strings.Contains(band, "┌") {
+		t.Errorf("no plain (focused) border in the messages band; the focused pane did not "+
 			"render through renderMessagesRegion. Band was:\n%s", band)
 	}
 	if !strings.Contains(band, "╭") {

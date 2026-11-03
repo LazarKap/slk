@@ -3,6 +3,7 @@ package main
 import (
 	"time"
 
+	"github.com/gammons/slk/internal/bubbles/scrollbar"
 	"github.com/gammons/slk/internal/config"
 	"github.com/gammons/slk/internal/core"
 	"github.com/gammons/slk/internal/ui"
@@ -20,6 +21,8 @@ type uiSettings struct {
 	StaleAfter       time.Duration
 	MouseWheelLines  int
 	ColoredUsernames bool
+	Scrollbar        bool
+	GroupMessages    bool
 	ThemeOverrides   core.Theme
 	// StayInInsertAfterSend is [compose] stay_in_insert_after_send
 	// (default off).
@@ -34,6 +37,8 @@ func uiSettingsFromConfig(cfg config.Config) uiSettings {
 		StaleAfter:            time.Duration(cfg.Sidebar.HideInactiveAfterDays) * 24 * time.Hour,
 		MouseWheelLines:       cfg.Appearance.MouseWheelLines,
 		ColoredUsernames:      cfg.Appearance.ColoredUsernames,
+		Scrollbar:             boolOr(cfg.Appearance.Scrollbar, true),
+		GroupMessages:         boolOr(cfg.Appearance.GroupMessages, true),
 		ThemeOverrides:        cfg.Theme,
 		StayInInsertAfterSend: cfg.Compose.StayInInsertAfterSend,
 	}
@@ -53,7 +58,16 @@ func applyUISettings(app *ui.App, s uiSettings) {
 	app.SetSidebarStaleThreshold(s.StaleAfter)
 	app.SetMouseWheelLines(s.MouseWheelLines)
 	app.SetColoredUsernames(s.ColoredUsernames)
+	scrollbar.Enabled = s.Scrollbar
+	app.SetGroupMessages(s.GroupMessages)
 	app.SetThemeItems(styles.ThemeNames())
 	app.SetThemeOverrides(s.ThemeOverrides)
 	app.SetStayInInsertAfterSend(s.StayInInsertAfterSend)
+}
+
+func boolOr(v *bool, def bool) bool {
+	if v == nil {
+		return def
+	}
+	return *v
 }

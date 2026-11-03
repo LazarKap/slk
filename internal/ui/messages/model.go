@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -203,6 +204,9 @@ type Model struct {
 	// SetColoredUsernames; invalidates the render cache so existing rows
 	// pick up the new coloring.
 	coloredUsernames bool
+	// groupMessages hides the header row and avatar on a message that
+	// continues the previous author's run; see isContinuation.
+	groupMessages bool
 }
 
 // SetFocused records whether the messages pane currently holds user focus
@@ -1107,6 +1111,45 @@ func (m *Model) SetColoredUsernames(enabled bool) {
 	m.dirty()
 }
 
+// SetGroupMessages enables Slack-style grouping: consecutive messages
+// from the same author within five minutes drop their header row.
+func (m *Model) SetGroupMessages(enabled bool) {
+	m.groupMessages = enabled
+	m.dropCache()
+	m.dirty()
+}
+
+// isContinuation reports whether messages[i] should render without its
+// own header: same author as messages[i-1], both plain messages, same
+// day, within five minutes, and not split by the unread landmark.
+func (m *Model) isContinuation(i int) bool {
+	if !m.groupMessages || i <= 0 || i >= len(m.messages) {
+		return false
+	}
+	cur, prev := m.messages[i], m.messages[i-1]
+	if cur.UserID == "" || cur.UserID != prev.UserID {
+		return false
+	}
+	if cur.Subtype != "" || prev.Subtype != "" || cur.Ephemeral || prev.Ephemeral || cur.IsEdited {
+		return false
+	}
+	if DateFromTS(cur.TS) != DateFromTS(prev.TS) {
+		return false
+	}
+	if m.lastReadTS != "" && prev.TS <= m.lastReadTS && cur.TS > m.lastReadTS {
+		return false
+	}
+	ct, err1 := strconv.ParseFloat(cur.TS, 64)
+	pt, err2 := strconv.ParseFloat(prev.TS, 64)
+	return err1 == nil && err2 == nil && ct-pt <= 300
+}
+
+// blankAvatar keeps a continuation row aligned with the header row above
+// it: placeAvatarBeside pads every later row to the same gutter width.
+func blankAvatar() string {
+	return lipgloss.NewStyle().Background(styles.Background).Render("    ")
+}
+
 // SetCurrentUser records the authenticated user ID so UpdateReaction can
 // flag the current user's own reactions (HasReacted) correctly.
 func (m *Model) SetCurrentUser(userID string) {
@@ -1473,8 +1516,13 @@ func (m *Model) renderMessageEntry(i int, width int, cs cacheStyles, stats *entr
 		SixelRows:       true,
 		stats:           stats,
 	}
+	opt.Continuation = m.isContinuation(i)
 	if m.avatarFn != nil {
-		opt.Avatar = m.avatarFn(msg.UserID)
+		if opt.Continuation {
+			opt.Avatar = blankAvatar()
+		} else {
+			opt.Avatar = m.avatarFn(msg.UserID)
+		}
 	}
 	r := RenderMessage(msg, width, m.renderContext(), opt)
 	// The channel pane's kitty upload order: blocks, attachments, then
@@ -1492,7 +1540,7 @@ func (m *Model) renderMessageEntry(i int, width int, cs cacheStyles, stats *entr
 	// extraction trims trailing whitespace, and no real content lives
 	// in the spacer row.
 	trail := 0
-	if i < len(m.messages)-1 {
+	if i < len(m.messages)-1 && !m.isContinuation(i+1) {
 		linesN = append(linesN, cs.spacerLines...)
 		linesS = append(linesS, cs.spacerLines...)
 		linesP = append(linesP, plainLine{Text: "", Bytes: []int{0}})
