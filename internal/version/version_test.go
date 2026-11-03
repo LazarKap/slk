@@ -12,21 +12,15 @@ func TestModalFooter(t *testing.T) {
 	if !strings.Contains(got, "slk v1.2.3") {
 		t.Errorf("footer missing version: %q", got)
 	}
-	// Attribution wording.
-	if !strings.Contains(got, "Made with") {
-		t.Errorf("footer missing 'Made with': %q", got)
-	}
-	if !strings.Contains(got, "\u2764") {
-		t.Errorf("footer missing heart glyph: %q", got)
-	}
-	if !strings.Contains(got, "Grant Ammons") {
-		t.Errorf("footer missing author: %q", got)
+	// Fork wording.
+	if !strings.Contains(got, "fork") {
+		t.Errorf("footer missing fork wording: %q", got)
 	}
 	// URL is present and OSC-8 wrapped (clickable), with visible label.
-	if !strings.Contains(got, "https://grant.dev") {
+	if !strings.Contains(got, "https://github.com/LazarKap/slk") {
 		t.Errorf("footer missing url: %q", got)
 	}
-	if !strings.Contains(got, "\x1b]8;;https://grant.dev\x1b\\") {
+	if !strings.Contains(got, "\x1b]8;;https://github.com/LazarKap/slk\x1b\\") {
 		t.Errorf("footer url not OSC-8 wrapped: %q", got)
 	}
 	// URL is parenthesized.
