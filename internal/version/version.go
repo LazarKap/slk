@@ -39,5 +39,5 @@ func osc8(url string) string {
 //
 // The URL is OSC-8 wrapped so supporting terminals make it clickable.
 func ModalFooter(version string) string {
-	return "slk " + version + " - Made with \u2764\ufe0f by Grant Ammons (" + osc8("https://grant.dev") + ")"
+	return "slk " + version + " \u00b7 lazar's fork (" + osc8("https://github.com/LazarKap/slk") + ")"
 }
