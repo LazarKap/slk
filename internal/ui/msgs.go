@@ -249,6 +249,14 @@ type (
 	// the filtering). Dispatched by the unread-toggle key while the
 	// Activity view is focused.
 	ActivityToggleUnreadMsg struct{}
+	// ActivityLocalItemMsg carries an item slk produced itself: a
+	// configured keyword seen on the RTM stream, which Slack's feed does
+	// not report. Kept per workspace so feed reloads merge it back.
+	ActivityLocalItemMsg struct {
+		TeamID string
+		Item   core.ActivityItem
+		Body   core.ActivityMessage
+	}
 	// ActivityBadgeUpdatedMsg carries a workspace's total unread
 	// activity - the number the sidebar's Activity badge shows. Sent
 	// once per workspace at boot (from client.counts) and again

@@ -32,7 +32,9 @@ import (
 // line i*cardStride. Same layout and math as threadsview.
 const (
 	cardContentLines = 2
-	cardStride       = cardContentLines + 1
+	cardStride       = cardContentLines
+	// headerRows is the filter/status band drawn above the list.
+	headerRows = 1
 )
 
 // reminderHint fills line 2 of a Slack reminder's card: the feed carries
@@ -101,6 +103,17 @@ type Model struct {
 	// when it flips (the server does the filtering).
 	unreadOnly bool
 
+	// filter narrows visible to one kind ("" = all); prioritize floats
+	// unread mentions and DMs to the top. visible is items after both,
+	// rebuilt by rebuild(); every cursor/render path reads visible.
+	filter     string
+	prioritize bool
+	visible    []core.ActivityItem
+
+	// localBodies holds bodies for items slk made itself (keyword hits
+	// from the RTM stream), which no messages.list hydration covers.
+	localBodies map[string]core.ActivityMessage
+
 	selected int
 	yOffset  int
 	focused  bool
@@ -125,6 +138,8 @@ func New(userNames map[string]string, selfUserID string) Model {
 		channelNames: map[string]string{},
 		channelTypes: map[string]string{},
 		bodies:       map[string]core.ActivityMessage{},
+		localBodies:  map[string]core.ActivityMessage{},
+		prioritize:   true,
 	}
 }
 
@@ -270,12 +285,29 @@ func (m *Model) SetItems(items []core.ActivityItem) {
 	if slices.Equal(m.items, items) {
 		return
 	}
-	prevKey, hadSel := m.selectedKey()
 	m.items = items
+	m.rebuild()
+}
 
+// rebuild derives visible from items through the kind filter and the
+// priority sort, keeping the selection on the same item by Key.
+func (m *Model) rebuild() {
+	prevKey, hadSel := m.selectedKey()
+	vis := make([]core.ActivityItem, 0, len(m.items))
+	for _, it := range m.items {
+		if m.filter == "" || KindOf(it.Type) == m.filter {
+			vis = append(vis, it)
+		}
+	}
+	if m.prioritize {
+		slices.SortStableFunc(vis, func(a, b core.ActivityItem) int {
+			return priority(a) - priority(b)
+		})
+	}
+	m.visible = vis
 	newSel := 0
 	if hadSel {
-		for i, it := range items {
+		for i, it := range vis {
 			if it.Key == prevKey {
 				newSel = i
 				break
@@ -288,6 +320,87 @@ func (m *Model) SetItems(items []core.ActivityItem) {
 	m.dirty()
 }
 
+// priority ranks an item for the priority sort: unread mentions and DMs
+// first, everything else keeps feed order.
+func priority(it core.ActivityItem) int {
+	if it.IsUnread {
+		switch KindOf(it.Type) {
+		case "mention", "dm":
+			return 0
+		}
+	}
+	return 1
+}
+
+// KindOf buckets Slack's activity types into the five kinds the filter
+// and glyph colours use.
+func KindOf(itemType string) string {
+	switch itemType {
+	case "at_user", "at_user_group", "at_channel", "at_everyone",
+		"keyword", "list_user_mentioned", "unjoined_channel_mention", "channel":
+		return "mention"
+	case "thread_v2":
+		return "thread"
+	case "message_reaction":
+		return "reaction"
+	case "dm", "bot_dm_bundle":
+		return "dm"
+	}
+	return "other"
+}
+
+// filterCycle is the order f steps through.
+var filterCycle = []string{"", "mention", "thread", "dm", "reaction"}
+
+// CycleFilter advances the kind filter and returns the new one.
+func (m *Model) CycleFilter() string {
+	for i, f := range filterCycle {
+		if f == m.filter {
+			m.filter = filterCycle[(i+1)%len(filterCycle)]
+			m.rebuild()
+			return m.filter
+		}
+	}
+	m.filter = ""
+	m.rebuild()
+	return m.filter
+}
+
+// Filter returns the active kind filter ("" = all).
+func (m *Model) Filter() string { return m.filter }
+
+// TogglePriority flips the priority sort and returns its new state.
+func (m *Model) TogglePriority() bool {
+	m.prioritize = !m.prioritize
+	m.rebuild()
+	return m.prioritize
+}
+
+// AddLocalItem prepends an item slk produced itself (a keyword hit seen
+// on the RTM stream) with its body, deduped by Key. Local items survive
+// feed reloads: SetItems callers merge them back in.
+func (m *Model) AddLocalItem(it core.ActivityItem, body core.ActivityMessage) {
+	for _, x := range m.items {
+		if x.Key == it.Key {
+			return
+		}
+	}
+	m.localBodies[core.ActivityMsgKey(it.ChannelID, it.TS)] = body
+	m.items = append([]core.ActivityItem{it}, m.items...)
+	m.rebuild()
+}
+
+// UnreadItems returns every unread item, for mark-all-read.
+func (m *Model) UnreadItems() []core.ActivityItem {
+	var out []core.ActivityItem
+	for _, it := range m.items {
+		if it.IsUnread {
+			out = append(out, it)
+		}
+	}
+	return out
+}
+
 // Items returns the current list of activity items.
 func (m *Model) Items() []core.ActivityItem { return m.items }
 
@@ -298,10 +411,10 @@ func (m *Model) SelectedIndex() int { return m.selected }
 // ThreadTS carry enough to open the target), with ok=false when the list is
 // empty.
 func (m *Model) SelectedItem() (core.ActivityItem, bool) {
-	if len(m.items) == 0 || m.selected < 0 || m.selected >= len(m.items) {
+	if len(m.visible) == 0 || m.selected < 0 || m.selected >= len(m.visible) {
 		return core.ActivityItem{}, false
 	}
-	return m.items[m.selected], true
+	return m.visible[m.selected], true
 }
 
 // selectedKey returns the Key of the currently selected item, with ok=false
@@ -316,7 +429,7 @@ func (m *Model) selectedKey() (string, bool) {
 
 // MoveDown advances the cursor by one row, clamping at the bottom.
 func (m *Model) MoveDown() {
-	if m.selected < len(m.items)-1 {
+	if m.selected < len(m.visible)-1 {
 		m.selected++
 		m.dirty()
 	}
@@ -387,12 +500,16 @@ func (m *Model) ClickAt(rowY int) bool {
 	if rowY < 0 {
 		return false
 	}
+	rowY -= headerRows
+	if rowY < 0 {
+		return false
+	}
 	absLine := m.yOffset + rowY
 	if absLine%cardStride >= cardContentLines {
 		return false
 	}
 	idx := absLine / cardStride
-	if idx < 0 || idx >= len(m.items) {
+	if idx < 0 || idx >= len(m.visible) {
 		return false
 	}
 	if m.selected != idx {
@@ -424,7 +541,7 @@ func (m *Model) SetItemRead(key string, read bool) bool {
 		}
 		if m.items[i].IsUnread == read {
 			m.items[i].IsUnread = !read
-			m.dirty()
+			m.rebuild()
 		}
 		return true
 	}
@@ -435,7 +552,7 @@ func (m *Model) clampSelection() {
 	if m.selected < 0 {
 		m.selected = 0
 	}
-	if n := len(m.items); n == 0 {
+	if n := len(m.visible); n == 0 {
 		m.selected = 0
 	} else if m.selected >= n {
 		m.selected = n - 1
@@ -452,18 +569,27 @@ func (m *Model) View(height, width int) string {
 		height = 1
 	}
 
-	if len(m.items) == 0 {
+	header := m.renderHeader(width)
+	if height <= headerRows {
+		return header
+	}
+	height -= headerRows
+
+	if len(m.visible) == 0 {
 		msg := "no activity"
 		if m.unreadOnly {
 			msg = "no unread activity"
 		}
+		if m.filter != "" {
+			msg = "no " + m.filter + " activity"
+		}
 		empty := mutedStyle().Render(msg)
-		return lipgloss.Place(width, height, lipgloss.Center, lipgloss.Center, empty)
+		return header + "\n" + lipgloss.Place(width, height, lipgloss.Center, lipgloss.Center, empty)
 	}
 
 	// Cards have a fixed stride, so the scroll math needs only the line
 	// count; render just the cards in the viewport.
-	totalLines := len(m.items)*cardStride - 1
+	totalLines := len(m.visible) * cardStride
 	if !m.hasSnapped || m.snappedSelection != m.selected {
 		m.snapToSelected(height, totalLines)
 		m.snappedSelection = m.selected
@@ -493,7 +619,30 @@ func (m *Model) View(height, width int) string {
 		}
 		visible = out
 	}
-	return strings.Join(visible, "\n")
+	return header + "\n" + strings.Join(visible, "\n")
+}
+
+// renderHeader is the one-row band above the list: filter, sort and
+// unread count on the left, the keys on the right.
+func (m *Model) renderHeader(width int) string {
+	label := "All"
+	if m.filter != "" {
+		label = strings.ToUpper(m.filter[:1]) + m.filter[1:] + "s"
+	}
+	left := lipgloss.NewStyle().Foreground(styles.Primary).Bold(true).Render(" Activity") +
+		mutedStyle().Render(" · ") + lipgloss.NewStyle().Foreground(styles.TextPrimary).Bold(true).Render(label)
+	if m.unreadOnly {
+		left += mutedStyle().Render(" · unread only")
+	}
+	if m.prioritize {
+		left += mutedStyle().Render(" · priority")
+	}
+	if n := m.UnreadCount(); n > 0 {
+		left += "  " + unreadDotStyle().Render(strconv.Itoa(n)+" unread")
+	}
+	right := mutedStyle().Render("f filter · p priority · u unread · R read all ")
+	line := layoutLine(left, right, width)
+	return lipgloss.NewStyle().Background(styles.Surface).Width(width).Render(line)
 }
 
 // snapToSelected adjusts yOffset so the selected card's content lines are
@@ -529,20 +678,13 @@ func (m *Model) renderLines(start, end, width int) []string {
 		return nil
 	}
 	out := make([]string, 0, end-start)
-	var separator string
-	for i := start / cardStride; i < len(m.items) && i*cardStride < end; i++ {
+	for i := start / cardStride; i < len(m.visible) && i*cardStride < end; i++ {
 		base := i * cardStride
-		l1, l2 := m.renderCard(m.items[i], width, i == m.selected)
+		l1, l2 := m.renderCard(m.visible[i], width, i == m.selected)
 		for j, line := range [cardContentLines]string{l1, l2} {
 			if abs := base + j; abs >= start && abs < end {
 				out = append(out, line)
 			}
-		}
-		if sep := base + cardContentLines; i < len(m.items)-1 && sep >= start && sep < end {
-			if separator == "" {
-				separator = blankLine(width)
-			}
-			out = append(out, separator)
 		}
 	}
 	return out
@@ -569,7 +711,10 @@ func (m *Model) renderCard(it core.ActivityItem, width int, selected bool) (stri
 		contentWidth = 1
 	}
 
-	body := m.bodies[core.ActivityMsgKey(it.ChannelID, it.TS)]
+	body, ok := m.bodies[core.ActivityMsgKey(it.ChannelID, it.TS)]
+	if !ok {
+		body = m.localBodies[core.ActivityMsgKey(it.ChannelID, it.TS)]
+	}
 
 	// Author = the actor (reactor for reactions, message author
 	// otherwise), falling back to the hydrated message's user when the
@@ -588,7 +733,7 @@ func (m *Model) renderCard(it core.ActivityItem, width int, selected bool) (stri
 		}
 	}
 
-	left := activityGlyph(it.Type) + " "
+	left := glyphStyle(KindOf(it.Type)).Render(activityGlyph(it.Type)) + " "
 	if author != "" {
 		left += authorStyle().Render(author)
 	}
@@ -755,6 +900,23 @@ func (m *Model) wrapLine(line string, contentWidth int, selected bool) string {
 			Width(contentWidth)
 	}
 	return borderStyle.Render(fill.Render(line))
+}
+
+// glyphStyle colours the kind glyph so rows scan by colour: mentions in
+// the error tone, threads accent, reactions warning, DMs primary.
+func glyphStyle(kind string) lipgloss.Style {
+	s := lipgloss.NewStyle().Bold(true)
+	switch kind {
+	case "mention":
+		return s.Foreground(styles.Error)
+	case "thread":
+		return s.Foreground(styles.Accent)
+	case "reaction":
+		return s.Foreground(styles.Warning)
+	case "dm":
+		return s.Foreground(styles.Primary)
+	}
+	return s.Foreground(styles.TextMuted)
 }
 
 // activityGlyph returns the leading glyph for a row keyed on the item type:

@@ -113,6 +113,18 @@ func ShouldNotify(ctx NotifyContext, channelID, userID, text, channelType string
 	return false
 }
 
+// MatchedKeyword returns the first configured keyword found in text,
+// case-insensitively, or "".
+func MatchedKeyword(keywords []string, text string) string {
+	lower := strings.ToLower(text)
+	for _, kw := range keywords {
+		if kw != "" && strings.Contains(lower, strings.ToLower(kw)) {
+			return kw
+		}
+	}
+	return ""
+}
+
 // StripSlackMarkup converts Slack-formatted text to plain text suitable for
 // OS notification bodies. User mentions are resolved against userNames; if
 // a user ID is missing from the map (or the map is nil) the raw user ID is

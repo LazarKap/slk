@@ -26,7 +26,9 @@ Things that bit me on macOS + Ghostty + tmux:
 - **Ctrl+S is eaten by tmux** if it is bound there; this fork adds **Ctrl+G** for the presence menu.
 - Upstream sync: `git fetch upstream && git rebase upstream/main`, then rebuild.
 
-Changes in this fork on top of upstream: Ctrl+N/Ctrl+P in the reaction picker, `d` downloads images too, downloaded files get an extension from Content-Type, Ctrl+G presence menu.
+Changes in this fork on top of upstream: Ctrl+N/Ctrl+P in the reaction picker, `d` downloads images too, downloaded files get an extension from Content-Type, Ctrl+G presence menu, Slack-style message grouping (`group_messages`), `scrollbar = false`, plain focused borders, coloured sidebar/chat/thread headers.
+
+Activity view in this fork: colour-coded kind glyphs, `f` cycles All/Mentions/Threads/DMs/Reactions, `p` toggles priority sort (unread mentions and DMs first), `R` marks everything read, two rows per item, live refresh while open, and `[notifications] on_keyword` hits appear as local items.
 
 ## Why slk?
 

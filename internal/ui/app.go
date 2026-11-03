@@ -432,6 +432,9 @@ type App struct {
 	userGroups       map[string]string
 	coloredUsernames bool
 	groupMessages    bool
+	// activityLocal holds slk-made Activity items (keyword hits) per
+	// workspace, merged in front of every loaded feed page.
+	activityLocal map[string][]core.ActivityItem
 
 	// buildInfo is the build identity :version shows: version and short
 	// commit (version.Short). Set once at startup by main.

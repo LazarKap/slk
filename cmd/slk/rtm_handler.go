@@ -11,6 +11,7 @@ import (
 	"github.com/gammons/slk/internal/config"
 	"github.com/gammons/slk/internal/core"
 	"github.com/gammons/slk/internal/debuglog"
+	"github.com/gammons/slk/internal/mention"
 	"github.com/gammons/slk/internal/notify"
 	slackclient "github.com/gammons/slk/internal/slack"
 	"github.com/gammons/slk/internal/ui"
@@ -212,6 +213,21 @@ func (h *rtmEventHandler) OnMessage(channelID, userID, ts, text, threadTS, subty
 			IsMuted:         h.wsCtx != nil && h.wsCtx.MuteStore != nil && h.wsCtx.MuteStore.IsMuted(channelID),
 		}
 		chType := h.channelTypes[channelID]
+		// A keyword hit is notification-only in Slack's own feed; surface
+		// it in Activity as a local mention-kind item so it is not lost
+		// once the banner is gone. Mentions and DMs already arrive there.
+		if kw := notify.MatchedKeyword(ctx.OnKeyword, text); kw != "" && h.program != nil &&
+			userID != h.currentUserID && chType != "dm" && chType != "group_dm" &&
+			!mention.InText(text, h.currentUserID) {
+			h.program.Send(ui.ActivityLocalItemMsg{
+				TeamID: h.workspaceID,
+				Item: core.ActivityItem{
+					Key: "local:kw:" + channelID + ":" + ts, Type: "keyword", IsUnread: true,
+					FeedTS: ts, ChannelID: channelID, TS: ts, AuthorID: userID,
+				},
+				Body: core.ActivityMessage{Text: text, UserID: userID},
+			})
+		}
 		// Pass the raw userID (not authorID): ShouldNotify's self-message
 		// suppression keys on the human sender, and a bot message
 		// (userID == "", authorID == botID) can never be "you" — so the
