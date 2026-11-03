@@ -319,7 +319,7 @@ func dialogGoldens() []dialogGolden {
 				a.SetMode(ModeNewMessage)
 			},
 		},
-		{name: "dialog_help", want: "Keybindings", shown: helpShown, open: openHelp},
+		{name: "dialog_help", want: "Cheat sheet", shown: helpShown, open: openHelp},
 		{
 			name: "dialog_help_search_no_match", want: "No matching keybindings", shown: helpShown,
 			open: func(t *testing.T, a *App) {
@@ -330,7 +330,7 @@ func dialogGoldens() []dialogGolden {
 				a.SetMode(ModeHelp)
 			},
 		},
-		{name: "dialog_help_narrow", w: 40, h: 20, want: "Keybindings", shown: helpShown, open: openHelp},
+		{name: "dialog_help_narrow", w: 40, h: 20, want: "Cheat sheet", shown: helpShown, open: openHelp},
 		{
 			name: "dialog_search_results", want: "Search Workspace", shown: searchShown,
 			open: func(t *testing.T, a *App) {

@@ -314,7 +314,7 @@ func TestViewOverlayContainsTitle(t *testing.T) {
 	m.SetEntries(sampleEntries())
 	m.Open()
 	out := m.ViewOverlay(80, 24, strings.Repeat(" ", 80*24))
-	if !strings.Contains(out, "Keybindings") {
-		t.Error("rendered overlay should contain title 'Keybindings'")
+	if !strings.Contains(out, "Cheat sheet") {
+		t.Error("rendered overlay should contain title 'Cheat sheet'")
 	}
 }
