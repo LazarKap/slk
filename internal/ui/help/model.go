@@ -30,6 +30,10 @@ var _ interface {
 type Entry struct {
 	Key  string
 	Desc string
+	// Section names the group an entry belongs to; a Header entry is
+	// the group's title row (Key empty), shown only while not filtering.
+	Section string
+	Header  bool
 }
 
 // Model is the help overlay state.
@@ -196,9 +200,16 @@ func (m *Model) filter() {
 	m.filtered = m.filtered[:0]
 	q := text.Fold(m.query)
 	for i, e := range m.entries {
-		if q == "" ||
-			strings.Contains(text.Fold(e.Desc), q) ||
-			strings.Contains(text.Fold(e.Key), q) {
+		if q == "" {
+			m.filtered = append(m.filtered, i)
+			continue
+		}
+		if e.Header {
+			continue
+		}
+		if strings.Contains(text.Fold(e.Desc), q) ||
+			strings.Contains(text.Fold(e.Key), q) ||
+			strings.Contains(text.Fold(e.Section), q) {
 			m.filtered = append(m.filtered, i)
 		}
 	}
@@ -217,8 +228,8 @@ func maxVisibleRows(termHeight int) int {
 	if mv < 5 {
 		mv = 5
 	}
-	if mv > 20 {
-		mv = 20
+	if mv > 40 {
+		mv = 40
 	}
 	return mv
 }
@@ -269,8 +280,8 @@ func (m Model) renderBox(termWidth, termHeight int) string {
 	if overlayWidth < 40 {
 		overlayWidth = 40
 	}
-	if overlayWidth > 80 {
-		overlayWidth = 80
+	if overlayWidth > 96 {
+		overlayWidth = 96
 	}
 	if overlayWidth > termWidth-2 {
 		overlayWidth = termWidth - 2
@@ -299,6 +310,9 @@ func (m Model) renderBox(termWidth, termHeight int) string {
 	// descriptions line up. Cap at half the row to keep descriptions readable.
 	maxKeyWidth := 0
 	for _, e := range m.entries {
+		if e.Header {
+			continue
+		}
 		if w := lipgloss.Width(e.Key); w > maxKeyWidth {
 			maxKeyWidth = w
 		}
@@ -311,6 +325,15 @@ func (m Model) renderBox(termWidth, termHeight int) string {
 	rows := make([]string, 0, end-start)
 	for i := start; i < end; i++ {
 		e := m.entries[m.filtered[i]]
+		if e.Header {
+			hs := s.Row.Foreground(styles.Primary).Bold(true)
+			if i == m.selected {
+				hs = s.RowSelected.Foreground(styles.Primary).Bold(true)
+			}
+			title := truncate.StringWithTail(e.Section, uint(rowWidth-1), "\u2026")
+			rows = append(rows, hs.Width(rowWidth-1).Render(title))
+			continue
+		}
 
 		keyLabel := e.Key
 		if lipgloss.Width(keyLabel) > maxKeyWidth {
@@ -332,7 +355,7 @@ func (m Model) renderBox(termWidth, termHeight int) string {
 		rows = append(rows, ks.Width(maxKeyWidth).Render(keyLabel)+" "+ds.Width(descBudget).Render(desc))
 	}
 
-	footer := s.Footer.Render("/ search   esc/q close")
+	footer := s.Footer.Render("/ search   j/k scroll   esc/q close")
 	if m.footer != "" {
 		// Attribution sits at the very bottom of the modal, centered
 		// across the inner width and below the controls line.
@@ -340,7 +363,7 @@ func (m Model) renderBox(termWidth, termHeight int) string {
 	}
 
 	f := chrome.Frame{
-		Title:  "Keybindings",
+		Title:  "Cheat sheet",
 		Input:  inputLine,
 		Body:   list.Rows(s, m.selected, rows),
 		Footer: footer,

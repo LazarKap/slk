@@ -1269,10 +1269,10 @@ func TestNormalModeKeys(t *testing.T) {
 				// desc-sorted order -- element-for-element, not "at
 				// least a few". Rebuilding the want from a.keys keeps
 				// this stable as bindings are added.
-				want := help.FromKeyMap(a.keys)
+				want := help.Sheet()
 				got := a.help.VisibleEntries()
 				if len(got) != len(want) {
-					t.Fatalf("help entries = %d, want %d (the full keymap)", len(got), len(want))
+					t.Fatalf("help entries = %d, want %d (the full cheat sheet)", len(got), len(want))
 				}
 				for i := range want {
 					if got[i] != want[i] {
@@ -1290,8 +1290,8 @@ func TestNormalModeKeys(t *testing.T) {
 				// Spot-check one entry that only the real keymap
 				// produces, so the row fails if FromKeyMap starts
 				// returning placeholder rows.
-				if !slices.Contains(got, help.Entry{Key: "Y/C", Desc: "copy permalink"}) {
-					t.Error("help entries do not include the Y/C copy-permalink row")
+				if !slices.Contains(got, help.Entry{Key: "Y / C", Desc: "copy permalink", Section: "Read messages"}) {
+					t.Error("help entries do not include the Y / C copy-permalink row")
 				}
 			},
 		},
